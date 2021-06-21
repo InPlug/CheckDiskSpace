@@ -64,17 +64,22 @@ namespace CheckDiskSpace
             this.EvaluateParametersOrFail(checkerParameters, returnObject);
             this.TryPingOrFail(returnObject);
             this.TryGetDiskSpaceByFileSystem(returnObject);
-            if (returnObject.TotalNumberOfMBytes <= 0)
+            if (returnObject.TotalNumberOfMBytes <= 0 && returnObject.Server != null)
             {
                 this.TryGetDiskSpaceBySqlAccess(returnObject);
             }
             if (returnObject.TotalNumberOfMBytes <= 0)
             {
+                if (this._failWithException)
+                {
+                    throw new ApplicationException(String.Format("{0}: Für '{1}' konnte kein Plattenplatz ermittelt werden.",
+                        this.GetType().Name, returnObject.DriveLetter ?? "-"));
+                }
                 returnObject.TotalNumberOfMBytes = -1;
-                // throw new ApplicationException(String.Format("{0}: Für '{1}' konnte kein Plattenplatz ermittelt werden.", this.GetType().Name, share ?? ""));
             }
             this.OnNodeProgressChanged(this.GetType().Name, 100, 100, ItemsTypes.items);
-            return returnObject.FreeMBytesAvailable >= returnObject.CriticalFreeMBytesAvailable;
+            return returnObject.TotalNumberOfMBytes >= 0
+                   && returnObject.FreeMBytesAvailable >= returnObject.CriticalFreeMBytesAvailable;
         }
 
         #endregion public members
@@ -82,6 +87,7 @@ namespace CheckDiskSpace
         #region private members
 
         private object _returnObject = null;
+        private bool _failWithException = false;
 
         [DllImport("kernel32")]
         private static extern int GetDiskFreeSpaceEx(
@@ -213,8 +219,13 @@ namespace CheckDiskSpace
             if (para.Length > 2 && Int32.TryParse(para[2], out timeout)) { }
             returnObject.Timeout = timeout;
             int retries = 1;
-            if (para.Length > 3 && !Int32.TryParse(para[3], out retries)) { }
+            if (para.Length > 3 && Int32.TryParse(para[3], out retries)) { }
             returnObject.Retries = retries;
+            bool failWithException;
+            if (para.Length > 4 && Boolean.TryParse(para[4], out failWithException))
+            {
+                this._failWithException = failWithException;
+            }
         }
 
         private bool GetDiskFreeSpaceBytesBySQLServerInstance(string sqlServerInstance, string driveLetter, out long totalNumberOfBytes, out long freeBytesAvailable)
@@ -275,7 +286,8 @@ namespace CheckDiskSpace
 
         private object syntax()
         {
-            return String.Format("Aufruf: {0} Share oder Laufwerksbuchstabe | minimaler-Plattenplatz(in MByte) [|Timeout [Retries]]", this.GetType().Name);
+            return String.Format("Aufruf: {0} Share oder Laufwerksbuchstabe | minimaler-Plattenplatz(in MByte) ",
+                this.GetType().Name) + "[|Timeout in ms [max. Versuche [Exception-bei-Fehler (true/false)]]]";
         }
 
         private void OnNodeProgressChanged(string itemsName, int countAll, int countSucceeded, ItemsTypes itemsType)
