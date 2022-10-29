@@ -113,11 +113,10 @@ namespace CheckDiskSpace
         }
 
         /// <summary>
-        /// Vergleicht dieses Result mit einem übergebenen Result nach Inhalt.
-        /// Der Timestamp wird bewusst nicht in den Vergleich einbezogen.
+        /// Vergleicht dieses Objekt mit einem übergebenen Objekt nach Inhalt.
         /// </summary>
-        /// <param name="obj">Das zu vergleichende Result.</param>
-        /// <returns>True, wenn das übergebene Result inhaltlich (ohne Timestamp) gleich diesem Result ist.</returns>
+        /// <param name="obj">Das zu vergleichende Objekt.</param>
+        /// <returns>True, wenn das übergebene Objekt inhaltlich gleich diesem Objekt ist.</returns>
         public override bool Equals(object obj)
         {
             if (obj == null || this.GetType() != obj.GetType())
@@ -136,7 +135,7 @@ namespace CheckDiskSpace
         }
 
         /// <summary>
-        /// Erzeugt einen eindeutigen Hashcode für dieses Result.
+        /// Erzeugt einen eindeutigen Hashcode für dieses Objekt.
         /// Der Timestamp wird bewusst nicht in den Vergleich einbezogen.
         /// </summary>
         /// <returns>Hashcode (int).</returns>
