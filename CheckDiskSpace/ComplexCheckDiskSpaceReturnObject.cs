@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 
@@ -16,48 +14,56 @@ namespace CheckDiskSpace
     ///
     /// 21.12.2014 Erik Nagel: erstellt
     /// </remarks>
-    [Serializable()]
+    [DataContract()] // [Serializable()]
     public class ComplexCheckDiskSpaceReturnObject
     {
         /// <summary>
         /// Name des Servers, der angepingt werden soll.
         /// </summary>
-        public string Server { get; set; }
+        [DataMember]
+        public string? Server { get; set; }
 
         /// <summary>
         /// Laufwerksbuchstabe.
         /// </summary>
-        public string DriveLetter { get; set; }
+        [DataMember]
+        public string? DriveLetter { get; set; }
 
         /// <summary>
         /// Noch verfügbarer Plattenplatz in MBytes, ab dem gewarnt wird.
         /// </summary>
-        public long CriticalFreeMBytesAvailable { get; set; }
+        [DataMember]
+        public long? CriticalFreeMBytesAvailable { get; set; }
 
         /// <summary>
         /// Gesamter Plattenplatz in MBytes.
         /// </summary>
-        public long TotalNumberOfMBytes { get; set; }
+        [DataMember]
+        public long? TotalNumberOfMBytes { get; set; }
 
         /// <summary>
         /// Verfügbarer Plattenplatz in MBytes.
         /// </summary>
-        public long FreeMBytesAvailable { get; set; }
+        [DataMember]
+        public long? FreeMBytesAvailable { get; set; }
 
         /// <summary>
         /// True wenn der Plattenplatz mit Hilfe einer SQL-Server-Instanz ermittelt wurde.
         /// </summary>
-        public bool SQLServerAccess { get; set; }
+        [DataMember]
+        public bool? SQLServerAccess { get; set; }
 
         /// <summary>
         /// Timeout für einen einzelnen Ping.
         /// </summary>
-        public int Timeout { get; set; }
+        [DataMember]
+        public int? Timeout { get; set; }
 
         /// <summary>
         /// Anzahl Ping-Versuche, bevor ein Fehler erzeugt wird.
         /// </summary>
-        public int Retries { get; set; }
+        [DataMember]
+        public int? Retries { get; set; }
 
         /// <summary>
         /// Standard Konstruktor.
@@ -73,12 +79,12 @@ namespace CheckDiskSpace
         {
             this.Server = info.GetString("Server");
             this.DriveLetter = info.GetString("DriveLetter");
-            this.CriticalFreeMBytesAvailable = (long)info.GetValue("CriticalFreeMBytesAvailable", typeof(long));
-            this.TotalNumberOfMBytes = (long)info.GetValue("TotalNumberOfMBytes", typeof(long));
-            this.FreeMBytesAvailable = (long)info.GetValue("FreeMBytesAvailable", typeof(long));
-            this.SQLServerAccess = (bool)info.GetValue("SQLServerAccess", typeof(bool));
-            this.Timeout = (int)info.GetValue("Timeout", typeof(int));
-            this.Retries = (int)info.GetValue("Retries", typeof(int));
+            this.CriticalFreeMBytesAvailable = (long?)info.GetValue("CriticalFreeMBytesAvailable", typeof(long));
+            this.TotalNumberOfMBytes = (long?)info.GetValue("TotalNumberOfMBytes", typeof(long));
+            this.FreeMBytesAvailable = (long?)info.GetValue("FreeMBytesAvailable", typeof(long));
+            this.SQLServerAccess = (bool?)info.GetValue("SQLServerAccess", typeof(bool));
+            this.Timeout = (int?)info.GetValue("Timeout", typeof(int));
+            this.Retries = (int?)info.GetValue("Retries", typeof(int));
         }
 
         /// <summary>
@@ -105,8 +111,20 @@ namespace CheckDiskSpace
         /// <returns>Alle öffentlichen Properties als ein String aufbereitet.</returns>
         public override string ToString()
         {
+            if (String.IsNullOrEmpty(Server) && String.IsNullOrEmpty(DriveLetter))
+            {
+                return String.Empty;
+            }
             StringBuilder str = new StringBuilder();
-            string serverDrive = String.IsNullOrEmpty(Server) ? DriveLetter : Server + (String.IsNullOrEmpty(DriveLetter) ? "" : @"//" + DriveLetter);
+            string serverDrive;
+            if (String.IsNullOrEmpty(Server))
+            {
+                serverDrive = DriveLetter ?? "";
+            }
+            else
+            {
+                serverDrive = Server + (String.IsNullOrEmpty(DriveLetter) ? "" : @"//" + DriveLetter);
+            }
             str.Append(String.Format("{0}: gesamt: {1} MB, frei: {2} MB, Minimum: {3} MB",
                        serverDrive, TotalNumberOfMBytes, FreeMBytesAvailable, CriticalFreeMBytesAvailable));
             return str.ToString();
@@ -117,7 +135,7 @@ namespace CheckDiskSpace
         /// </summary>
         /// <param name="obj">Das zu vergleichende Objekt.</param>
         /// <returns>True, wenn das übergebene Objekt inhaltlich gleich diesem Objekt ist.</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null || this.GetType() != obj.GetType())
             {

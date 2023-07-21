@@ -2,11 +2,11 @@
 using System;
 using System.Threading;
 using System.Net.NetworkInformation;
-using NetEti.Globals;
 using Vishnu.Interchange;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
+using System.ComponentModel;
 
 namespace CheckDiskSpace
 {
@@ -32,12 +32,12 @@ namespace CheckDiskSpace
         /// des Checkers geändert hat, sollte aber zumindest aber einmal zum
         /// Schluss der Verarbeitung aufgerufen werden.
         /// </summary>
-        public event CommonProgressChangedEventHandler NodeProgressChanged;
+        public event ProgressChangedEventHandler? NodeProgressChanged;
 
         /// <summary>
         /// Rückgabe-Objekt des Checkers
         /// </summary>
-        public object ReturnObject
+        public object? ReturnObject
         {
             get
             {
@@ -56,11 +56,11 @@ namespace CheckDiskSpace
         /// <param name="treeParameters">Für den gesamten Tree gültige Parameter oder null (für zukünftige Versionen vorgesehen).</param>
         /// <param name="source">Auslösendes TreeEvent oder null.</param>
         /// <returns>True, wenn genug Plattenplatz verfügbar ist, ansonsten False oder Exception.</returns>
-        public bool? Run(object checkerParameters, TreeParameters treeParameters, TreeEvent source)
+        public bool? Run(object? checkerParameters, TreeParameters treeParameters, TreeEvent source)
         {
             ComplexCheckDiskSpaceReturnObject returnObject = new ComplexCheckDiskSpaceReturnObject();
             this._returnObject = returnObject;
-            this.OnNodeProgressChanged(this.GetType().Name, 100, 0, ItemsTypes.items);
+            this.OnNodeProgressChanged(0);
             this.EvaluateParametersOrFail(checkerParameters, returnObject);
             this.TryPingOrFail(returnObject);
             this.TryGetDiskSpaceByFileSystem(returnObject);
@@ -77,7 +77,7 @@ namespace CheckDiskSpace
                 }
                 returnObject.TotalNumberOfMBytes = -1;
             }
-            this.OnNodeProgressChanged(this.GetType().Name, 100, 100, ItemsTypes.items);
+            this.OnNodeProgressChanged(100);
             return returnObject.TotalNumberOfMBytes >= 0
                    && returnObject.FreeMBytesAvailable >= returnObject.CriticalFreeMBytesAvailable;
         }
@@ -86,7 +86,7 @@ namespace CheckDiskSpace
 
         #region private members
 
-        private object _returnObject = null;
+        private object? _returnObject = null;
         private bool _failWithException = false;
 
         [DllImport("kernel32")]
@@ -120,15 +120,17 @@ namespace CheckDiskSpace
 
         private void TryGetDiskSpaceBySqlAccess(ComplexCheckDiskSpaceReturnObject returnObject)
         {
-            string sqlServer = returnObject.Server.TrimStart('\\');
-            if (sqlServer.ToLower().Equals("localhost"))
+            string? sqlServer = returnObject.Server?.TrimStart('\\');
+            if (String.IsNullOrEmpty(sqlServer))
+            {
+                return;
+            }
+            if (sqlServer.ToLower().Equals("localhost") == true)
             {
                 sqlServer = "(local)";
             }
-            long freeBytesAvailable;
-            long totalNumberOfBytes;
             if (!String.IsNullOrEmpty(returnObject.DriveLetter)
-                && this.GetDiskFreeSpaceBytesBySQLServerInstance(sqlServer, returnObject.DriveLetter, out totalNumberOfBytes, out freeBytesAvailable))
+                && this.GetDiskFreeSpaceBytesBySQLServerInstance(sqlServer, returnObject.DriveLetter, out long totalNumberOfBytes, out long freeBytesAvailable))
             {
                 returnObject.SQLServerAccess = true;
                 returnObject.TotalNumberOfMBytes = totalNumberOfBytes / (1024 * 1000);
@@ -141,10 +143,9 @@ namespace CheckDiskSpace
             if (returnObject.Server != null)
             {
                 int retry = 0;
-                this.OnNodeProgressChanged(this.GetType().Name, returnObject.Retries, retry, ItemsTypes.items);
-                while (retry++ < returnObject.Retries && !this.canPing(returnObject.Server.TrimStart('\\'), returnObject.Timeout))
+                while (retry++ < returnObject.Retries && !this.canPing(returnObject.Server.TrimStart('\\'), returnObject.Timeout ?? 0))
                 {
-                    this.OnNodeProgressChanged(this.GetType().Name, returnObject.Retries, retry, ItemsTypes.items);
+                    this.OnNodeProgressChanged((int)(((100.0 * retry) / returnObject.Retries) + .5));
                     Thread.Sleep(10);
                 }
                 if (retry > returnObject.Retries)
@@ -154,10 +155,12 @@ namespace CheckDiskSpace
             }
         }
 
-        private void EvaluateParametersOrFail(object checkerParameters, ComplexCheckDiskSpaceReturnObject returnObject)
+        private void EvaluateParametersOrFail(object? checkerParameters, ComplexCheckDiskSpaceReturnObject returnObject)
         {
-            string[] para = checkerParameters.ToString().Split('|');
-            string share = para.Length > 0 ? para[0] : "";
+            string pString = (checkerParameters)?.ToString()?.Trim() ??
+                throw new ArgumentException(String.Format("Es wurden keine Parameter mitgegeben."));
+            string[] paraStrings = pString.Split('|');
+            string share = paraStrings.Length > 0 ? paraStrings[0] : "";
             if (!String.IsNullOrEmpty(share))
             {
                 string x = share.TrimEnd(':').ToUpper();
@@ -167,7 +170,7 @@ namespace CheckDiskSpace
                 }
                 if (String.IsNullOrEmpty(returnObject.DriveLetter))
                 {
-                    string server = null;
+                    string? server = null;
                     string tmpShare = @"\\" + share.TrimStart('\\');
                     MatchCollection matches = new Regex(@"\\\\[\w-]+(.*)", RegexOptions.IgnoreCase).Matches(tmpShare);
                     if (matches.Count > 0)
@@ -193,7 +196,7 @@ namespace CheckDiskSpace
             if (returnObject.DriveLetter == null)
             {
                 Match match = Regex.Match(share, @"\\([^\\]+)$");
-                string driveLetter = null;
+                string? driveLetter = null;
                 if (match.Length > 0)
                 {
                     GroupCollection groups = match.Groups;
@@ -209,20 +212,20 @@ namespace CheckDiskSpace
 
             }
             long criticalFreeMBytesAvailable;
-            if (para.Length < 2 || !long.TryParse(para[1].Trim(), out criticalFreeMBytesAvailable))
+            if (paraStrings.Length < 2 || !long.TryParse(paraStrings[1].Trim(), out criticalFreeMBytesAvailable))
             {
                 throw new ArgumentException(String.Format("{0}: Bitte einen Mindest-Platzbedarf in MB angeben.\n{1}",
                   this.GetType().Name, this.syntax()));
             }
             returnObject.CriticalFreeMBytesAvailable = criticalFreeMBytesAvailable;
             int timeout = 2000;
-            if (para.Length > 2 && Int32.TryParse(para[2], out timeout)) { }
+            if (paraStrings.Length > 2 && Int32.TryParse(paraStrings[2], out timeout)) { }
             returnObject.Timeout = timeout;
             int retries = 1;
-            if (para.Length > 3 && Int32.TryParse(para[3], out retries)) { }
+            if (paraStrings.Length > 3 && Int32.TryParse(paraStrings[3], out retries)) { }
             returnObject.Retries = retries;
             bool failWithException;
-            if (para.Length > 4 && Boolean.TryParse(para[4], out failWithException))
+            if (paraStrings.Length > 4 && Boolean.TryParse(paraStrings[4], out failWithException))
             {
                 this._failWithException = failWithException;
             }
@@ -290,12 +293,9 @@ namespace CheckDiskSpace
                 this.GetType().Name) + "[|Timeout in ms [max. Versuche [Exception-bei-Fehler (true/false)]]]";
         }
 
-        private void OnNodeProgressChanged(string itemsName, int countAll, int countSucceeded, ItemsTypes itemsType)
+        private void OnNodeProgressChanged(int progressPercentage)
         {
-            if (NodeProgressChanged != null)
-            {
-                NodeProgressChanged(null, new CommonProgressChangedEventArgs(itemsName, countAll, countSucceeded, itemsType, null));
-            }
+            NodeProgressChanged?.Invoke(null, new ProgressChangedEventArgs(progressPercentage, null));
         }
 
         private bool canPing(string address, int timeout)
