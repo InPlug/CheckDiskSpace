@@ -1,6 +1,4 @@
 ﻿// Enthält unmanaged code (DllImport("kernel32"))!
-using System;
-using System.Threading;
 using System.Net.NetworkInformation;
 using Vishnu.Interchange;
 using System.Runtime.InteropServices;
@@ -14,7 +12,7 @@ namespace CheckDiskSpace
     /// Prüft, ob noch genug Plattenplatz verfügbar ist.
     /// Ermittelt für das zu prüfende Laufwerk den gesamten Plattenplatz
     /// und den verfügbaren Plattenplatz in MBytes und vergleicht den
-    /// verfügbaren Plattenplatz mit einer Mindest-Vorgabe.
+    /// verfügbaren Plattenplatz mit einer Mindestvorgabe.
     /// </summary>
     /// <remarks>
     /// File: CheckDiskSpace.cs
@@ -28,7 +26,7 @@ namespace CheckDiskSpace
         #region public members
 
         /// <summary>
-        /// Kann aufgerufen werden, wenn sich der Verarbeitungs-Fortschritt
+        /// Kann aufgerufen werden, wenn sich der Verarbeitungsfortschritt
         /// des Checkers geändert hat, sollte aber zumindest aber einmal zum
         /// Schluss der Verarbeitung aufgerufen werden.
         /// </summary>
