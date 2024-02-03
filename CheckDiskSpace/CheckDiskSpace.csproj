@@ -10,7 +10,7 @@
     <Company>NetEti</Company>
     <Authors>Erik Nagel</Authors>
     <Description>$(AssemblyName) - Vishnu-Checker: ermittelt von Festplattenauslastungen</Description>
-    <Copyright>Copyright © $(Authors) 2014-2023</Copyright>
+    <Copyright>Copyright © $(Authors) 2014-$([System.DateTime]::Now.Year)</Copyright>
     <AssemblyVersion>8.0.0.0</AssemblyVersion>
     <FileVersion>8.0.0.0</FileVersion>
     <PackageTags>NetEti Vishnu Plugin Drive Disk Space</PackageTags>
